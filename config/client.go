@@ -9,6 +9,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
+/*
+	Connects to the Redis Server and returns a client
+*/
 func RedisClient(ctx *context.Context) (*redis.Client, error) {
 	err := godotenv.Load()
 	if err != nil {
