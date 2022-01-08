@@ -5,7 +5,6 @@ import (
 
 	"github.com/Loukay/thecokctaildb-cache/config"
 	"github.com/Loukay/thecokctaildb-cache/update"
-	"github.com/go-resty/resty/v2"
 )
 
 
@@ -16,15 +15,13 @@ func main() {
 
 	redis, err := config.RedisClient(&ctx)
 
-	http := resty.New()
-
 	updater := update.Updater{
 		Ctx: &ctx,
 		Redis: redis,
-		Http: http,
+		API: update.NewAPIClient(),
 	}
 
-	updater.RunUpdate()
+	updater.Run()
 
 	if err != nil {
 		panic("There was a problem connecting to the Redis server.")
