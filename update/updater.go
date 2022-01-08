@@ -3,19 +3,37 @@ package update
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/go-resty/resty/v2"
 )
 
 type Updater struct {
 	Ctx *context.Context
 	Redis *redis.Client
-	Http *resty.Client
+	*API
 }
 
 
 
-func (Updater) RunUpdate() {
-	fmt.Println("Running update")
+/*
+	Fetches data from the API and stores it in the Redis Server
+*/
+func (updater Updater) Run()  {
+	
+	log.Printf("Started database update at %s\n", time.Now())
+
+	ingredients, err := updater.API.GetAllIngredients()
+
+	if err != nil {
+		log.Println(err)
+		log.Println("Couldn't retrieve the ingredients. Aborting the update.")
+	}
+
+	for _, v := range ingredients {
+		fmt.Printf(v.Name)
+	}
+
+
 }
