@@ -66,8 +66,5 @@ func (api API) GetAllIngredients() ([]Ingredient, error) {
 */
 func NewAPIClient() *API {
 	Http := resty.New()
-
-	API := API{Http}
-
-	return &API
+	return &API{Http}
 }
