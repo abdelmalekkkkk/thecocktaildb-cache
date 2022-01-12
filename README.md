@@ -24,6 +24,7 @@ git clone https://github.com/Loukay/thecokctaildb-cache && cd thecokctaildb-cach
 ```
 REDIS_HOST=localhost
 REDIS_PORT=6379
+API_URL=https://url/api/json/v2/KEY
 ```
 
 3. Install the packages and dependencies 
