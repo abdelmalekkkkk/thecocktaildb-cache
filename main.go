@@ -5,13 +5,18 @@ import (
 	"context"
 	"log"
 	"os"
+	"time"
 
 	"github.com/Loukay/thecokctaildb-cache/config"
 	"github.com/Loukay/thecokctaildb-cache/update"
+	"github.com/go-co-op/gocron"
+	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 )
 
 func main() {
+
+	s := gocron.NewScheduler(time.UTC)
 
 	ctx := context.Background()
 
@@ -26,8 +31,25 @@ func main() {
 		panic("There was a problem connecting to the Redis server.")
 	}
 
-	res, err :=
-		redis.Do(ctx, "FT.CREATE", "idx:ingredients",
+	buildIndexes(&ctx, redis)
+
+	updater := update.Updater{
+		Ctx:   &ctx,
+		Redis: redis,
+		API:   update.NewAPIClient(os.Getenv("API_URL")),
+	}
+
+	s.Every(6).Hours().Do(updater.Run)
+
+	s.StartAsync()
+
+	bufio.NewScanner(os.Stdin).Scan()
+
+}
+
+func buildIndexes(ctx *context.Context, redis *redis.Client) {
+	_, err :=
+		redis.Do(*ctx, "FT.CREATE", "idx:ingredients",
 			"ON", "hash",
 			"PREFIX", "1", "ingredient:",
 			"SCHEMA",
@@ -38,8 +60,8 @@ func main() {
 		log.Printf("Couldn't create ingredients index %v", err)
 	}
 
-	res, err =
-		redis.Do(ctx, "FT.CREATE", "idx:alcohols",
+	_, err =
+		redis.Do(*ctx, "FT.CREATE", "idx:alcohols",
 			"ON", "hash",
 			"PREFIX", "1", "alcohol:",
 			"SCHEMA",
@@ -50,8 +72,8 @@ func main() {
 		log.Printf("Couldn't create alcohols index %v", err)
 	}
 
-	res, err =
-		redis.Do(ctx, "FT.CREATE", "idx:cocktails",
+	_, err =
+		redis.Do(*ctx, "FT.CREATE", "idx:cocktails",
 			"ON", "hash",
 			"PREFIX", "1", "cocktail:",
 			"SCHEMA",
@@ -61,17 +83,4 @@ func main() {
 	if err != nil {
 		log.Printf("Couldn't create Index %v", err)
 	}
-
-	log.Printf("Creating index: %v", res)
-
-	updater := update.Updater{
-		Ctx:   &ctx,
-		Redis: redis,
-		API:   update.NewAPIClient(os.Getenv("API_URL")),
-	}
-
-	updater.Run()
-
-	bufio.NewScanner(os.Stdin).Scan()
-
 }
