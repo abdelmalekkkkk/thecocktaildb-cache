@@ -14,10 +14,7 @@ type Updater struct {
 	Ctx   *context.Context
 	Redis *redis.Client
 	*API
-	RequestsChannel chan IngredientName
-	ResultsChannel  chan Ingredient
 }
-
 
 // Run method fetches data from the API and stores it in the Redis Server
 func (updater Updater) Run() {
@@ -25,12 +22,13 @@ func (updater Updater) Run() {
 	log.Printf("Started database update")
 
 	go updater.updateIngredients()
+	go updater.updateCocktails()
 
 }
 
 func (updater Updater) updateIngredients() {
 
-	log.Printf("Setting ingredientsID to 0")
+	log.Print("Setting ingredientID and alcoholID to 0")
 	updater.Redis.Set(*updater.Ctx, "ingredientID", 0, 0)
 	updater.Redis.Set(*updater.Ctx, "alcoholID", 0, 0)
 
@@ -44,61 +42,134 @@ func (updater Updater) updateIngredients() {
 
 	log.Printf("%d ingredients retrieved", len(ingredients))
 
-	updater.RequestsChannel = make(chan IngredientName, 10)
-	updater.ResultsChannel = make(chan Ingredient, 10)
+	requestsChannel := make(chan IngredientName, 10)
+	resultsChannel := make(chan Ingredient, 10)
 
 	var wg sync.WaitGroup
 
 	go func() {
 		for _, ingredient := range ingredients {
-			updater.RequestsChannel <- ingredient
+			requestsChannel <- ingredient
 		}
-		close(updater.RequestsChannel)
+		close(requestsChannel)
 	}()
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 50; i++ {
 		wg.Add(1)
-		go updater.getIngredientWorker(&wg)
-		go updater.addIngredientWorker(&wg)
+		go updater.getIngredientWorker(&wg, requestsChannel, resultsChannel)
+		go updater.addIngredientWorker(&wg, resultsChannel)
 	}
 
 	wg.Wait()
 
 }
 
-func (updater Updater) getIngredientWorker(wg *sync.WaitGroup) {
-	for ingredient := range updater.RequestsChannel {
+func (updater Updater) updateCocktails() {
+
+	log.Print("Setting cocktailID to 0")
+	updater.Redis.Set(*updater.Ctx, "cocktailID", 0, 0)
+
+	log.Printf("Fetching cocktails from API")
+	cocktails, err := updater.API.GetAllCocktails()
+
+	if err != nil {
+		log.Println(err)
+		log.Println("Couldn't retrieve the cocktails. Aborting the update.")
+	}
+
+	log.Printf("%d alcohols retrieved", len(cocktails))
+
+	requestsChannel := make(chan CocktailID, 10)
+	resultsChannel := make(chan Cocktail, 10)
+
+	var wg sync.WaitGroup
+
+	go func() {
+		for _, cocktail := range cocktails {
+			requestsChannel <- cocktail
+		}
+		close(requestsChannel)
+	}()
+
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go updater.getCocktailWorker(&wg, requestsChannel, resultsChannel)
+		go updater.addCocktailWorker(&wg, resultsChannel)
+	}
+
+	wg.Wait()
+
+}
+
+func (updater Updater) getIngredientWorker(wg *sync.WaitGroup, requestsChannel <-chan IngredientName, resultsChannel chan<- Ingredient) {
+	for ingredient := range requestsChannel {
 		ingredientDetails, err := updater.API.GetIngredientDetails(ingredient)
 		if err != nil {
 			log.Printf("Error with %v", ingredient)
 			continue
 		}
-		log.Printf("%v", ingredientDetails)
-		go func() {
-			updater.ResultsChannel <- *ingredientDetails
-		}()
+		resultsChannel <- *ingredientDetails
 	}
 }
 
-func (updater Updater) addIngredientWorker(wg *sync.WaitGroup) {
-	for ingredient := range updater.ResultsChannel {
+func (updater Updater) addIngredientWorker(wg *sync.WaitGroup, resultsChannel <-chan Ingredient) {
+	for ingredient := range resultsChannel {
 		go updater.addIngredient(ingredient)
 	}
 }
 
 func (updater Updater) addIngredient(ingredient Ingredient) {
 	client := updater.Redis
-	entry := make(map[string]interface{})
-	entry["name"] = ingredient.Name
-	var id int64
-	var key string
-	if ingredient.IsAlcohol == "Yes" {
-		key = "alcohol"
-	} else {
-		key = "ingredient"
-		entry["type"] = ingredient.Type
+
+	entry := map[string]string{
+		"name":  ingredient.Name,
+		"image": ingredient.Image,
+		"type":  ingredient.Type,
 	}
-	id = client.Incr(*updater.Ctx, key+"ID").Val()
-	log.Printf("ID %d, Key %s,The entry is %+v", id, key, entry)
+
+	key := "alcohol"
+
+	if ingredient.IsAlcohol != "Yes" {
+		key = "ingredient"
+	}
+
+	id := client.Incr(*updater.Ctx, key+"ID").Val()
+
 	client.HMSet(*updater.Ctx, key+":"+strconv.FormatInt(id, 10), entry)
+}
+
+func (updater Updater) getCocktailWorker(wg *sync.WaitGroup, requestsChannel <-chan CocktailID, resultsChannel chan<- Cocktail) {
+	for cocktail := range requestsChannel {
+		cocktailDetails, err := updater.API.GetCocktailDetails(cocktail)
+		if err != nil {
+			log.Printf("Error with %v", cocktail)
+			continue
+		}
+		resultsChannel <- *cocktailDetails
+	}
+}
+
+func (updater Updater) addCocktailWorker(wg *sync.WaitGroup, resultsChannel <-chan Cocktail) {
+	for cocktail := range resultsChannel {
+		go updater.addCocktail(cocktail)
+	}
+}
+
+func (updater Updater) addCocktail(cocktail Cocktail) {
+	client := updater.Redis
+
+	entry := map[string]string{
+		"name":         cocktail.Name,
+		"category":     cocktail.Category,
+		"iba":          cocktail.IBA,
+		"glass":        cocktail.Glass,
+		"instructions": cocktail.Instructions,
+		"ingredients":  cocktail.Ingredients,
+		"measurements": cocktail.Measurements,
+		"image":        cocktail.Image,
+	}
+
+	id := client.Incr(*updater.Ctx, "cocktailID").Val()
+
+	client.HMSet(*updater.Ctx, "cocktail:"+strconv.FormatInt(id, 10), entry)
 }
