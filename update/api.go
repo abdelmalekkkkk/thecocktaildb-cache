@@ -228,6 +228,10 @@ func (api API) GetCocktailDetails(cocktailID CocktailID) (*Cocktail, error) {
 
 	json.Unmarshal(resp.Body(), &result)
 
+	if result["drinks"] == nil {
+		return nil, errors.New("unexpected error in the API")
+	}
+
 	details := result["drinks"].([]interface{})[0].(map[string]interface{})
 
 	var cocktail Cocktail
