@@ -245,7 +245,7 @@ func (api API) GetCocktailDetails(cocktailID CocktailID) (*Cocktail, error) {
 			continue
 		}
 
-		val := value.(string)
+		val := strings.TrimSpace(value.(string))
 
 		if strings.Contains(key, "strIngredient") {
 			ingredients = append(ingredients, val)
