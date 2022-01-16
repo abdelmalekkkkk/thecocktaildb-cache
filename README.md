@@ -9,7 +9,7 @@ TheCocktailDB is a free API that has a large collection of cocktails. Unfortunat
 This project tries to solve those issues by caching the entire API periodically using Redis. It does that by:
 
 * Scheduling an Updater that fetches the API and stores its data on a Redis server periodically
-* Exposing a few endpoints that are easier to understand to serve the data from the Redis server
+* ~~Exposing a few endpoints that are easier to understand to serve the data from the Redis server~~ This has been moved to [tipsee-api](https://github.com/Loukay/tipsee-api)
 
 # Running the project
 
