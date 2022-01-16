@@ -1,16 +1,18 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"log"
 	"os"
 	"time"
 
+	"github.com/Loukay/thecokctaildb-cache/api"
 	"github.com/Loukay/thecokctaildb-cache/config"
 	"github.com/Loukay/thecokctaildb-cache/update"
 	"github.com/go-co-op/gocron"
 	"github.com/go-redis/redis/v8"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
 )
 
@@ -43,7 +45,30 @@ func main() {
 
 	s.StartAsync()
 
-	bufio.NewScanner(os.Stdin).Scan()
+	var app *fiber.App = fiber.New(fiber.Config{
+		Prefork: false,
+	})
+
+	controller := api.Controller{
+		Redis: redis,
+		Ctx:   &ctx,
+	}
+
+	app.Use(cors.New())
+	app.Use(api.New())
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).JSON("The CocktailDB Cache")
+	})
+
+	app.Get("/ingredients", controller.GetRecords)
+	app.Get("/alcohols", controller.GetRecords)
+
+	err = app.Listen(":3001")
+
+	if err != nil {
+		log.Fatal("Failed to listen to web server")
+		panic(err)
+	}
 
 }
 
