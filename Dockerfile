@@ -1,5 +1,6 @@
 FROM golang:1.17
-COPY . /app
+
+WORKDIR /app
 
 # Install dependencies
 COPY go.mod ./

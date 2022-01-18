@@ -6,8 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/Loukay/thecokctaildb-cache/config"
-	"github.com/Loukay/thecokctaildb-cache/update"
 	"github.com/go-co-op/gocron"
 	"github.com/joho/godotenv"
 )
@@ -23,16 +21,16 @@ func main() {
 		log.Fatal("There was a problem loading .env file")
 	}
 
-	redis, err := config.RedisClient(&ctx)
+	redis, err := RedisClient(&ctx)
 
 	if err != nil {
 		panic("There was a problem connecting to the Redis server.")
 	}
 
-	updater := update.Updater{
+	updater := Updater{
 		Ctx:   &ctx,
 		Redis: redis,
-		API:   update.NewAPIClient(os.Getenv("API_URL")),
+		API:   NewAPIClient(os.Getenv("API_URL")),
 	}
 
 	s.Every(6).Hours().Do(updater.Run)
