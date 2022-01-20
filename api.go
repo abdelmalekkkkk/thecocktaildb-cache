@@ -37,6 +37,7 @@ type cocktailResult struct {
 
 // Ingredient holds the details of an ingredient (name, type, image url, and whether it's alcohol or not)
 type Ingredient struct {
+	ID        string `json:"idIngredient"`
 	Name      string `json:"strIngredient"`
 	Type      string `json:"strType"`
 	IsAlcohol string `json:"strAlcohol"`
@@ -45,6 +46,7 @@ type Ingredient struct {
 
 // Cocktail holds the details of a cocktail (name, category, IBA, glass type, ingredients, image url, and instructions)
 type Cocktail struct {
+	ID           string
 	Name         string
 	Category     string
 	IBA          string
@@ -258,6 +260,8 @@ func (api API) GetCocktailDetails(cocktailID CocktailID) (*Cocktail, error) {
 		}
 
 		switch key {
+		case "idDrink":
+			cocktail.ID = val
 		case "strDrink":
 			cocktail.Name = val
 		case "strCategory":

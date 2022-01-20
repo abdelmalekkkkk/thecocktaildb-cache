@@ -122,8 +122,9 @@ func (updater Updater) addIngredient(ingredient Ingredient) {
 	client := updater.Redis
 
 	entry := map[string]string{
+		"id":    ingredient.ID,
 		"name":  ingredient.Name,
-		"image": ingredient.Image,
+		"image": "https://" + ingredient.Image,
 		"type":  ingredient.Type,
 	}
 
@@ -159,6 +160,7 @@ func (updater Updater) addCocktail(cocktail Cocktail) {
 	client := updater.Redis
 
 	entry := map[string]string{
+		"id":           cocktail.ID,
 		"name":         cocktail.Name,
 		"category":     cocktail.Category,
 		"iba":          cocktail.IBA,
