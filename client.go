@@ -13,9 +13,7 @@ func RedisClient(ctx *context.Context) (*redis.Client, error) {
 	redisPort := os.Getenv("REDIS_PORT")
 
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     redisHost + ":" + redisPort,
-		Password: "",
-		DB:       0,
+		Addr: redisHost + ":" + redisPort,
 	})
 
 	_, err := rdb.Ping(*ctx).Result()
